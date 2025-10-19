@@ -1,18 +1,13 @@
-// Countdown timer to a target date and simple fireworks celebration
 (function () {
   'use strict';
 
-  // 1) Configure target date for countdown (Diwali 2025: Nov 1, 2025) -- adjust if needed
-  // Using local timezone
   const targetDate = new Date('2025-10-20T00:00:00');
 
-  // DOM refs
   const daysEl = document.getElementById('days');
   const hoursEl = document.getElementById('hours');
   const minutesEl = document.getElementById('minutes');
   const secondsEl = document.getElementById('seconds');
   const celebration = document.getElementById('celebration');
-  // share UI refs
   const shareBtn = document.getElementById('shareBtn');
   const friendNameInput = document.getElementById('friendName');
   const senderNameInput = document.getElementById('senderName');
@@ -22,6 +17,27 @@
   const greetText = document.getElementById('greetText');
   const closeGreet = document.getElementById('closeGreet');
   const shareCard = document.querySelector('.share-card');
+
+  const SOUND_ENABLED = true;
+  let fireAudio = null;
+  const FIRECRACKER_SRC = 'firecracker.mp3';
+  function ensureFireAudio() {
+    if (!SOUND_ENABLED) return null;
+    if (fireAudio) return fireAudio;
+    try {
+      fireAudio = document.createElement('audio');
+      fireAudio.id = 'firecrackerSound';
+      fireAudio.src = FIRECRACKER_SRC;
+      fireAudio.preload = 'auto';
+      fireAudio.loop = true;
+      fireAudio.volume = 1;
+      fireAudio.style.display = 'none';
+      document.body.appendChild(fireAudio);
+    } catch (e) {
+      fireAudio = null;
+    }
+    return fireAudio;
+  }
 
   function pad(n) { return String(n).padStart(2, '0'); }
 
@@ -42,28 +58,23 @@
     minutesEl.textContent = pad(minutes);
     secondsEl.textContent = pad(seconds);
 
-    // when reaches zero, trigger celebration and stop interval
     if (targetDate - now <= 0) {
       clearInterval(timer);
       triggerCelebration();
     }
   }
 
-  // small fireworks: spawn particle groups at random positions
   function triggerCelebration() {
     celebration.setAttribute('aria-hidden', 'false');
 
-    // Create several bursts
     for (let i = 0; i < 6; i++) {
       setTimeout(() => createFireworkBurst(), i * 500);
     }
 
-    // add vertical rising sparks for more effect
     for (let i = 0; i < 8; i++) {
       setTimeout(() => createSparkColumn(), i * 300);
     }
 
-    // remove celebration elements after a while
     setTimeout(() => {
       celebration.innerHTML = '';
       celebration.setAttribute('aria-hidden', 'true');
@@ -83,7 +94,6 @@
       el.style.background = color;
       el.style.left = x + 'px';
       el.style.top = y + 'px';
-      // random vector for explode animation
       const angle = (Math.PI * 2 * i) / count;
       const dist = 80 + Math.random() * 140;
       const dx = Math.cos(angle) * dist + 'px';
@@ -97,18 +107,15 @@
 
       celebration.appendChild(el);
 
-      // kick animation next tick
       requestAnimationFrame(() => {
         el.style.transform = `translate(calc(-50% + ${dx}), calc(-50% + ${dy})) scale(0.6)`;
         el.style.opacity = '0';
       });
 
-      // remove after animation
       setTimeout(() => el.remove(), 1100 + Math.random() * 400);
     }
   }
 
-  // vertical spark columns to mimic firecrackers/rising sparks
   function createSparkColumn() {
     const x = Math.random() * window.innerWidth;
     const startY = window.innerHeight - 80;
@@ -120,16 +127,13 @@
       s.style.top = startY + 'px';
       s.style.opacity = '1';
       celebration.appendChild(s);
-      // slight random delay and remove
       setTimeout(() => s.remove(), 1200 + Math.random() * 600);
     }
   }
 
-  // initial update + interval
   update();
   const timer = setInterval(update, 1000);
 
-  // --- Share link generation ---
   function showToast(msg) {
     if (!toast) return;
     toast.textContent = msg;
@@ -142,7 +146,6 @@
   }
 
   function buildShareUrl(name) {
-    // For GitHub Pages: use current location.origin + pathname
     const base = location.origin + location.pathname;
     const params = new URLSearchParams();
     if (name) params.set('to', name);
@@ -156,7 +159,6 @@
       await navigator.clipboard.writeText(text);
       return true;
     } catch (e) {
-      // fallback
       const ta = document.createElement('textarea');
       ta.value = text; document.body.appendChild(ta); ta.select();
       try { document.execCommand('copy'); document.body.removeChild(ta); return true; } catch (err) { document.body.removeChild(ta); return false; }
@@ -177,54 +179,75 @@
     });
   }
 
-  // --- Greeting overlay when opened with ?to=Name ---
   function parseParams() { return new URLSearchParams(location.search); }
   function openGreeting(name, fromName) {
     if (!greetingOverlay) return;
-    // pick a random wish
     const wishes = [
-      `May lights fill your life with joy, ${name}!`,
-      `Wishing you a Diwali full of sweet moments, ${name}.`,
-      `May this Diwali bring you success and happiness, ${name}!`,
-      `Bright Diwali wishes to you, ${name} — celebrate!`,
-      `Wishing you and your family a Diwali filled with love, laughter, and cherished memories, ${name}.`,
-      `To one of my dearest friend, ${name}, wishing you a Diwali full of joy, warmth, and happiness.`,
-      `Hope your Diwali sparkles with love and laughter, ${name}.`
+      `May lights fill your life with joy, ${name}! ✨`,
+      `Wishing you a Diwali full of sweet moments, ${name}. 🍬❤`,
+      `May this Diwali bring you success and happiness, ${name}! 🪔🌟`,
+      `Bright Diwali wishes to you, ${name} — celebrate with love! ❤️`,
+      `Wishing you and your family a Diwali filled with love, laughter, and cherished memories, ${name}. 💖`,
+      `To one of my dearest friends, ${name}, wishing you a Diwali full of joy, warmth, and happiness. 💕`,
+      `Hope your Diwali sparkles with love and laughter, ${name}. ✨🎉`,
+      `Sending you warm light and big hugs this Diwali, ${name}. 🫶🪔`,
+      `May your life glow with lights and your heart glow with love, ${name}. ❤️🪔`
     ];
     const wish = wishes[Math.floor(Math.random() * wishes.length)];
     greetTitle.textContent = `Happy Diwali, ${name}!`;
-    greetText.textContent = fromName ? `${wish} — from ${fromName}` : wish;
     greetingOverlay.setAttribute('aria-hidden', 'false');
-    // stronger celebration when opened via shared link
+    // type the wish into the greetText element for a friendlier feel
+    (async () => {
+      await typeText(greetText, fromName ? `${wish} — from ${fromName} 💌` : `${wish}`);
+    })();
     bigCelebration();
-    // highlight share card to encourage re-share
     if (shareCard) {
       shareCard.classList.add('highlight');
       setTimeout(() => shareCard.classList.remove('highlight'), 7000);
     }
   }
 
-  // close overlay
+  // typing helper: types text into an element with a blinking caret
+  async function typeText(el, text, speed = 36) {
+    if (!el) return;
+    el.classList.add('typing');
+    el.textContent = '';
+    for (let i = 0; i < text.length; i++) {
+      el.textContent += text[i];
+      // small jitter in speed for natural feel
+      const jitter = Math.random() * (speed * 0.4);
+      await new Promise(r => setTimeout(r, speed + jitter));
+    }
+    el.classList.remove('typing');
+  }
+
   if (closeGreet) closeGreet.addEventListener('click', () => {
     greetingOverlay.setAttribute('aria-hidden', 'true');
   });
 
-  // if URL has friend name, show greeting
   (function checkSharedLink() {
     const params = parseParams();
     const to = params.get('to');
     if (to) {
-      // decode and sanitize basic: allow letters, numbers, space, dash, dot, apostrophe and many latin accents
-      const name = decodeURIComponent(to).replace(/[^^\w\-\.\'\u00C0-\u017F ]/g, '').slice(0, 32);
+      const name = decodeURIComponent(to).replace(/[^\w\-\.\'\u00C0-\u017F ]/g, '').slice(0, 32);
       const from = params.get('from');
-      const sender = from ? decodeURIComponent(from).replace(/[^^\w\-\.\'\u00C0-\u017F ]/g, '').slice(0, 32) : '';
-      if (name) setTimeout(() => openGreeting(name, sender), 300);
+      const sender = from ? decodeURIComponent(from).replace(/[^\w\-\.\'\u00C0-\u017F ]/g, '').slice(0, 32) : '';
+      if (name) {
+        setTimeout(() => {
+          openGreeting(name, sender);
+          try {
+            const cleanUrl = location.origin + location.pathname + location.hash;
+            history.replaceState(null, '', cleanUrl);
+          } catch (e) {
+          }
+        }, 300);
+      }
     }
   })();
 
-  // larger celebration variant for recipients
   function bigCelebration() {
-    // more bursts + confetti-like small particles
+    startFireAudio();
+
     for (let i = 0; i < 12; i++) {
       setTimeout(() => createFireworkBurst(), i * 200);
     }
@@ -242,8 +265,29 @@
         setTimeout(() => p.remove(), 1600 + Math.random()*800);
       }, i * 60);
     }
-    // clear after a bit
-    setTimeout(() => { celebration.innerHTML = ''; celebration.setAttribute('aria-hidden','true'); }, 9000);
+    setTimeout(() => { celebration.innerHTML = ''; celebration.setAttribute('aria-hidden','true'); stopFireAudio(); }, 9000);
+  }
+
+  async function startFireAudio() {
+    const a = ensureFireAudio();
+    if (!a) return;
+    if (!a.paused) return;
+    try {
+      const playPromise = a.play();
+      if (playPromise && typeof playPromise.then === 'function') {
+        await playPromise;
+      }
+    } catch (e) {
+    }
+  }
+
+  function stopFireAudio() {
+    if (!fireAudio) return;
+    try {
+      fireAudio.pause();
+      fireAudio.currentTime = 0;
+    } catch (e) {
+    }
   }
 
 })();
